@@ -59,36 +59,48 @@ Inside the docker container run:
   ```bash
     sudo apt-get update
   ```
+
   ```bash
     sudo apt-get install libglfw3 libglfw3-dev
   ```
+
   ```bash
     cd ~/projects/shadow_robot/base/src/
   ```
+
   ```bash
     sudo rm -r sr_interface
   ```
+
   ```bash
     git clone https://github.com/DIGI2-FEUP/Shadow-v2.2.5.1-Software-Install.git
   ```
+
   ```bash
     sudo mv Shadow-v2.2.5.1-Software-Install/sr_interface .
   ```
+
   ```bash
     sudo rm -r Shadow-v2.2.5.1-Software-Install
   ```
+
   ```bash
     git clone https://github.com/TAMS-Group/bio_ik.git
   ```
+
   ```bash
     cd ..
   ```
+
   ```bash
     catkin_make
   ```
+
   ```bash
     echo "source /home/user/projects/shadow_robot/base/devel/setup.bash" >> /home/user/.bashrc
   ```
+
+Restart the server container.
 
 ## Conclusion
 
