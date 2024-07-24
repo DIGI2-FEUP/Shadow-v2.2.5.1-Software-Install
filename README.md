@@ -1,4 +1,4 @@
-# Control of a Robotic System with a Dexterous Hand for Detailed Tasks
+# Shadow Dexterous Hand Software Installation
 
 Last reviewed: `24/07/2024`
 
