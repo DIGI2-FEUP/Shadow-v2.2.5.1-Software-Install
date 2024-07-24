@@ -98,5 +98,7 @@ Best of luck in your developments!
 
 
 Francisco Ribeiro (fmribeiro@fe.up.pt)
+
 Bruno Santos (brunosantos@fe.up.pt)
+
 DIGI2
