@@ -33,14 +33,25 @@
   <arg name="generate_planning_config" default="true"/>
 
   <!-- ik solver possible values sr_hand_kinematics/trac_ik/bio_ik -->
-  <arg name="hand_ik_solver" default="sr_hand_kinematics"/>
+  <arg name="hand_ik_solver" default="bio_ik"/>
   <arg name="hand_ik_solver_path" value="$(find sr_moveit_hand_config)/config/kinematics_template.yaml" if="$(eval hand_ik_solver == 'sr_hand_kinematics')" />
   <arg name="hand_ik_solver_path" value="$(find sr_moveit_hand_config)/config/kinematics_$(arg hand_ik_solver)_template.yaml" unless="$(eval hand_ik_solver == 'sr_hand_kinematics')" />
+
+  <!-- arm ik solver -->
+  <arg name="arm_ik_solver" default="bio_ik"/>
+  <group if="$(eval arm_ik_solver=='bio_ik')">
+    <param name="generate_load_moveit_config/kinematics_file_name" value="kinematics_bio_ik.yaml"/>
+    <param name="generate_load_moveit_config/kinematics_extra_file_name" value="kinematics_extra_groups_bio_ik.yaml"/>
+  </group>
 
   <!-- The name of the rviz config file to load -->
   <arg name="rviz_config_file" default="$(find sr_multi_moveit_config)/launch/moveit.rviz"/>
 
   <arg name="trajectory_controllers_list" default="[]"/>
+
+  <arg name="robot_config_file" default="$(find sr_multi_moveit_config)/config/robot_configs/right_sh_ur10.yaml"/>
+
+  <param name="robot_config_file" value="$(arg robot_config_file)"/>
 
   <node name="conditional_delayed_rostool_planning_context" pkg="sr_utilities_common" type="conditional_delayed_rostool.py" output="screen">
     <param name="package_name" value="sr_multi_moveit_config" />
@@ -52,7 +63,7 @@
   <node name="conditional_delayed_rostool_movegroup_multi" pkg="sr_utilities_common" type="conditional_delayed_rostool.py" output="screen">
     <param name="package_name" value="sr_multi_moveit_config" />
     <param name="executable_name" value="move_group.launch" />
-    <rosparam param="args_from_param_list">[robot_config_file]</rosparam>
+    <rosparam param="args_from_param_list">[/robot_config_file]</rosparam>
     <rosparam param="params_list">[/robot_description, /robot_description_semantic]</rosparam>
     <rosparam param="topics_list" subst_value="True">$(arg trajectory_controllers_list)</rosparam>
     <param name="launch_args_list" value="hand_ik_solver_path:=$(arg hand_ik_solver_path)
