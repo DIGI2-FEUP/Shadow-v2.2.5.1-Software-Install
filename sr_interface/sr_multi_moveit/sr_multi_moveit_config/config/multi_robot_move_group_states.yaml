@@ -1,0 +1,243 @@
+# Software License Agreement (BSD License)
+# Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#   1. Redistributions of source code must retain the above copyright notice,
+#      this list of conditions and the following disclaimer.
+#   2. Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+#      may be used to endorse or promote products derived from this software without
+#      specific prior written permission.
+#
+# This software is provided by Shadow Robot Company Ltd "as is" and any express
+# or implied warranties, including, but not limited to, the implied warranties of
+# merchantability and fitness for a particular purpose are disclaimed. In no event
+# shall the copyright holder be liable for any direct, indirect, incidental, special,
+# exemplary, or consequential damages (including, but not limited to, procurement of
+# substitute goods or services; loss of use, data, or profits; or business interruption)
+# however caused and on any theory of liability, whether in contract, strict liability,
+# or tort (including negligence or otherwise) arising in any way out of the use of this
+# software, even if advised of the possibility of such damage.
+
+# This file is used to define move group states that span multiple robots, and therefore can't be defined in the
+# individual robot SRDFs. It is parsed in generate_robot_srdf.py.
+left_arm:  # Must be an existing move group; ignored if not.
+  la_start:  # The name of the new move group state that will be created.
+    joint_angles:  # A dictionary of joint names and angles (in radians) that define the new move group state.
+      la_elbow_joint: -2.0
+      la_shoulder_lift_joint: -1.89
+      la_shoulder_pan_joint: 0.0
+      la_wrist_1_joint: -2.4
+      la_wrist_2_joint: -1.5708
+      la_wrist_3_joint: 3.1416
+  hand_change:
+    joint_angles:
+      la_elbow_joint: -1.862694263458252
+      la_shoulder_lift_joint: -2.2352358303465785
+      la_shoulder_pan_joint: -0.0050919691668909195
+      la_wrist_1_joint: -0.6089532536319275
+      la_wrist_2_joint: -1.5779951254474085
+      la_wrist_3_joint: 3.141533851623535
+  pack_in_box:
+    joint_angles:
+      la_shoulder_pan_joint: 3.14159
+      la_shoulder_lift_joint: -1.5708
+      la_elbow_joint: -2.87979
+      la_wrist_1_joint: -1.8326
+      la_wrist_2_joint: 3.14159
+      la_wrist_3_joint: 3.14159
+  safe_store:
+    joint_angles:
+      la_shoulder_pan_joint: -0.00498
+      la_shoulder_lift_joint: -1.87962
+      la_elbow_joint: -2.8508
+      la_wrist_1_joint: 0.0232
+      la_wrist_2_joint: -1.5785
+      la_wrist_3_joint: 3.14154
+left_arm_and_wrist:
+  la_start:
+    inherit_from:  # States can inherit from other states, which must be defined either in this file or in a robot SRDF.
+      - move_group: left_arm
+        move_group_state: la_start  # Defined in this file.
+    joint_angles:
+      lh_WRJ1: 0.0
+      lh_WRJ2: 0.0
+  hand_change:
+    inherit_from:
+      - move_group: left_arm
+        move_group_state: hand_change
+    joint_angles:
+      lh_WRJ1: 0.0
+      lh_WRJ2: 0.0
+left_arm_and_hand:
+  la_start:
+    inherit_from:  # States can inherit from multiple other states.
+      - move_group: left_arm_and_wrist
+        move_group_state: la_start
+      - move_group: left_hand
+        move_group_state: relaxed  # Defined in the robot SRDF.
+  hand_change:
+    inherit_from:
+      - move_group: left_arm_and_wrist
+        move_group_state: hand_change
+      - move_group: left_hand
+        move_group_state: store
+  safe_store:
+    inherit_from:
+      - move_group: left_arm
+        move_group_state: safe_store
+      - move_group: left_hand
+        move_group_state: store
+right_arm:
+  ra_start:
+    joint_angles:
+      ra_elbow_joint: 2.0
+      ra_shoulder_lift_joint: -1.25
+      ra_shoulder_pan_joint: 0.0
+      ra_wrist_1_joint: -0.733
+      ra_wrist_2_joint: 1.5708
+      ra_wrist_3_joint: -3.1416
+  hand_change:
+    joint_angles:
+      ra_elbow_joint: 1.8135
+      ra_shoulder_lift_joint: -0.8813
+      ra_shoulder_pan_joint: -0.0013
+      ra_wrist_1_joint: -2.484
+      ra_wrist_2_joint: 1.573
+      ra_wrist_3_joint: -3.1416
+  pack_in_box:
+    joint_angles:
+      ra_shoulder_pan_joint: 3.14159
+      ra_shoulder_lift_joint: -1.5708
+      ra_elbow_joint: -2.87979
+      ra_wrist_1_joint: -1.8326
+      ra_wrist_2_joint: 3.14159
+      ra_wrist_3_joint: 3.14159
+  safe_store:
+    joint_angles:
+      ra_shoulder_pan_joint: -0.00143
+      ra_shoulder_lift_joint: -1.3315
+      ra_elbow_joint: 2.85298
+      ra_wrist_1_joint: -3.07303
+      ra_wrist_2_joint: 1.57285
+      ra_wrist_3_joint: -3.14154
+right_arm_and_wrist:
+  ra_start:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: ra_start
+    joint_angles:
+      rh_WRJ1: 0.0
+      rh_WRJ2: 0.0
+  hand_change:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: hand_change
+    joint_angles:
+      rh_WRJ1: 0.0
+      rh_WRJ2: 0.0
+right_arm_and_hand:
+  ra_start:
+    inherit_from:
+      - move_group: right_arm_and_wrist
+        move_group_state: ra_start
+      - move_group: right_hand
+        move_group_state: relaxed
+  hand_change:
+    inherit_from:
+      - move_group: right_arm_and_wrist
+        move_group_state: hand_change
+      - move_group: right_hand
+        move_group_state: store
+  safe_store:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: safe_store
+      - move_group: right_hand
+        move_group_state: store
+two_arms:
+  start:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: ra_start
+      - move_group: left_arm
+        move_group_state: la_start
+  hand_change:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: hand_change
+      - move_group: left_arm
+        move_group_state: hand_change
+  safe_store:
+    inherit_from:
+      - move_group: right_arm
+        move_group_state: safe_store
+      - move_group: left_arm
+        move_group_state: safe_store
+two_hands:
+  open:
+    inherit_from:
+      - move_group: right_hand
+        move_group_state: open
+      - move_group: left_hand
+        move_group_state: open
+  fingers_pack_thumb_open:
+    inherit_from:
+      - move_group: right_hand
+        move_group_state: fingers_pack_thumb_open
+      - move_group: left_hand
+        move_group_state: fingers_pack_thumb_open
+  pack:
+    inherit_from:
+      - move_group: right_hand
+        move_group_state: pack
+      - move_group: left_hand
+        move_group_state: pack
+  relaxed:
+    inherit_from:
+      - move_group: right_hand
+        move_group_state: relaxed
+      - move_group: left_hand
+        move_group_state: relaxed
+  store:
+    inherit_from:
+      - move_group: right_hand
+        move_group_state: store
+      - move_group: left_hand
+        move_group_state: store
+two_arms_and_wrists:
+  start:
+    inherit_from:
+      - move_group: right_arm_and_wrist
+        move_group_state: ra_start
+      - move_group: left_arm_and_wrist
+        move_group_state: la_start
+  hand_change:
+    inherit_from:
+      - move_group: right_arm_and_wrist
+        move_group_state: hand_change
+      - move_group: left_arm_and_wrist
+        move_group_state: hand_change
+two_arms_and_hands:
+  start:
+    inherit_from:
+      - move_group: right_arm_and_hand
+        move_group_state: ra_start
+      - move_group: left_arm_and_hand
+        move_group_state: la_start
+  hand_change:
+    inherit_from:
+      - move_group: right_arm_and_hand
+        move_group_state: hand_change
+      - move_group: left_arm_and_hand
+        move_group_state: hand_change
+  safe_store:
+    inherit_from:
+      - move_group: right_arm_and_hand
+        move_group_state: safe_store
+      - move_group: left_arm_and_hand
+        move_group_state: safe_store

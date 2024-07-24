@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_sr_ur_unlock_left" pkg="sr_robot_launch" type="test_sr_ur_unlock_left.py" time-limit="700.0"/>
+  <test test-name="test_sr_ur_unlock_right" pkg="sr_robot_launch" type="test_sr_ur_unlock_right.py" time-limit="700.0"/>
+  <test test-name="test_sr_ur_unlock_bimanual" pkg="sr_robot_launch" type="test_sr_ur_unlock_bimanual.py" time-limit="700.0"/>
+</launch>

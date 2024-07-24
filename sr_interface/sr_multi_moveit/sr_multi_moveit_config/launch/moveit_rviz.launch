@@ -1,0 +1,48 @@
+<!--
+ Software License Agreement (BSD License)
+ Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+ All rights reserved.
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+ This software is provided by Shadow Robot Company Ltd "as is" and any express
+ or implied warranties, including, but not limited to, the implied warranties of
+ merchantability and fitness for a particular purpose are disclaimed. In no event
+ shall the copyright holder be liable for any direct, indirect, incidental, special,
+ exemplary, or consequential damages (including, but not limited to, procurement of
+ substitute goods or services; loss of use, data, or profits; or business interruption)
+ however caused and on any theory of liability, whether in contract, strict liability,
+ or tort (including negligence or otherwise) arising in any way out of the use of this
+ software, even if advised of the possibility of such damage.
+-->
+
+<launch>
+
+  <arg name="debug" default="false" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+
+  <!-- ik solver path -->
+  <arg name="hand_ik_solver_path" default="$(find sr_moveit_hand_config)/config/kinematics_template.yaml"/>
+
+  <arg name="config" default="false" />
+  <arg name="rviz_config_file" default="$(find sr_multi_moveit_config)/launch/moveit.rviz"/>
+  <arg unless="$(arg config)" name="command_args" value="" />
+  <arg if="$(arg config)" name="command_args" value="-d $(arg rviz_config_file)" />
+  
+  <!-- The name of the robot config file to load -->
+  <arg name="robot_config_file" default=""/>
+  
+  <node name="$(anon rviz)" launch-prefix="$(arg launch_prefix)" pkg="rviz" type="rviz" respawn="false" args="$(arg command_args)" output="screen"/>
+  <group ns="$(anon rviz)">
+    <node name="load_kinematics" pkg="sr_multi_moveit_config" type="generate_load_moveit_config.py" respawn="false" output="screen" args="kinematics $(arg robot_config_file) $(arg hand_ik_solver_path)" />
+  </group>
+
+</launch>

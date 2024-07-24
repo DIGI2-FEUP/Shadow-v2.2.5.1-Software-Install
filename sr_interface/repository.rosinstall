@@ -1,0 +1,45 @@
+- git:
+    local-name: sr_core
+    uri: https://github.com/shadow-robot/sr_core.git
+    version: noetic-devel
+
+- git:
+    local-name: sr_common
+    uri: https://github.com/shadow-robot/sr_common.git
+    version: noetic-devel
+
+- git:
+    local-name: common_resources
+    uri: https://github.com/shadow-robot/common_resources.git
+    version: noetic-devel
+
+- git:
+    local-name: universal_robot
+    uri: https://github.com/ros-industrial/universal_robot.git
+    version: 1.3.1
+
+- git:
+    local-name: shadow_robot_ethercat
+    uri: https://github.com/shadow-robot/sr-ros-interface-ethercat.git
+    version: noetic-devel
+
+- git:
+    local-name: ros_control_robot
+    uri: https://github.com/shadow-robot/ros_control_robot.git
+    version: noetic-devel
+
+- git:
+    local-name: sr_hand_config
+    uri: https://github.com/shadow-robot/sr_hand_config.git
+    version: master
+
+- git:
+    local-name: gazebo2rviz
+    uri: https://github.com/shadow-robot/gazebo2rviz.git
+    version: noetic-devel
+
+# change back to upstream whenever it's fixed for python3
+- git:
+    local-name: pysdf
+    uri: https://github.com/shadow-robot/pysdf.git
+    version: master

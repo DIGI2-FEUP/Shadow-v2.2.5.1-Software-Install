@@ -1,0 +1,104 @@
+<!--
+ Software License Agreement (BSD License)
+ Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+ All rights reserved.
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+ This software is provided by Shadow Robot Company Ltd "as is" and any express
+ or implied warranties, including, but not limited to, the implied warranties of
+ merchantability and fitness for a particular purpose are disclaimed. In no event
+ shall the copyright holder be liable for any direct, indirect, incidental, special,
+ exemplary, or consequential damages (including, but not limited to, procurement of
+ substitute goods or services; loss of use, data, or profits; or business interruption)
+ however caused and on any theory of liability, whether in contract, strict liability,
+ or tort (including negligence or otherwise) arising in any way out of the use of this
+ software, even if advised of the possibility of such damage.
+-->
+
+<launch>
+  <arg name="planning" default="ompl"/>
+  <!-- By default, we are not in debug mode -->
+  <arg name="debug" default="false" />
+  <!-- By default, we do not start a database (it can be large) -->
+  <arg name="db" default="false" />
+  <!-- Allow user to specify database location -->
+  <arg name="db_path" default="$(find sr_multi_moveit_config)/default_warehouse_mongo_db" />
+
+  <!-- Do not open Rviz if running tests -->
+  <arg name="visualization" default="true"/>
+  <!--Should the planner yaml be automatically generated? -->
+  <arg name="generate_planning_config" default="true"/>
+
+  <arg name="robot_config_file" default="$(find sr_multi_moveit_config)/config/robot_configs/right_sh_ur10.yaml"/>
+  <arg name="robot_description" default="'$(find sr_multi_description)/urdf/srhand_ur.urdf.xacro'"/>
+  <arg name="hand_description" value="'$(find sr_description)/robots/sr_hand.urdf.xacro'"/>
+
+  <!-- hand ik solver possible values sr_hand_kinematics/kdl/trac_ik/bio_ik -->
+  <arg name="hand_ik_solver" default="sr_hand_kinematics"/>
+  <arg name="hand_ik_solver_path" value="$(find sr_moveit_hand_config)/config/kinematics_template.yaml" if="$(eval hand_ik_solver == 'sr_hand_kinematics')" />
+  <arg name="hand_ik_solver_path" value="$(find sr_moveit_hand_config)/config/kinematics_$(arg hand_ik_solver)_template.yaml" unless="$(eval hand_ik_solver == 'sr_hand_kinematics')" />
+  
+    <!-- Load necessary URDFs on the param server -->
+  <param name="right_hand_description" command="xacro $(arg hand_description)"/>
+  <param name="robot_description" command="xacro $(arg robot_description)"/>
+
+  <!-- Load the SRDF and other .yaml configuration files on the param server -->
+  <include file="$(find sr_multi_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="false"/>
+    <arg name="robot_config_file" value="$(arg robot_config_file)"/>
+    <arg name="hand_ik_solver_path" value="$(arg hand_ik_solver_path)"/>
+  </include>
+
+  <!-- Broadcast static tf for robot root -->
+  <node name="virtual_joint_broadcaster" pkg="sr_multi_moveit_config" type="virtual_joint_broadcaster.py" output="screen" />
+
+  <!-- We do not have a robot connected, so publish fake joint states -->
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <param name="/use_gui" value="false"/>
+    <rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>
+  </node>
+
+  <!-- Given the published joint states, publish tf for the robot links -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+
+  <!-- Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default) -->
+  <include file="$(find sr_multi_moveit_config)/launch/move_group.launch">
+    <arg name="hand_ik_solver_path" value="$(arg hand_ik_solver_path)"/>
+    <arg name="allow_trajectory_execution" value="true"/>
+    <arg name="fake_execution" value="true"/>
+    <arg name="info" value="true"/>
+    <arg name="debug" value="$(arg debug)"/>
+    <arg name="publish_monitored_planning_scene" value="true"/>
+    <arg name="pipeline" value="$(arg planning)"/>
+    <arg name="generate_planning_config" value="$(arg generate_planning_config)"/>
+    <arg name="robot_config_file" value="$(arg robot_config_file)"/>
+  </include>
+
+  <!-- Run Rviz and load the default config to see the state of the move_group node -->
+  <group if="$(arg visualization)">
+    <node name="conditional_delayed_rostool_rviz_multi" pkg="sr_utilities_common" type="conditional_delayed_rostool.py" output="screen">
+      <param name="package_name" value="sr_multi_moveit_config" />
+      <param name="executable_name" value="moveit_rviz.launch" />
+      <rosparam param="params_list">[/robot_description, /robot_description_semantic]</rosparam>
+      <param name="launch_args_list" value="hand_ik_solver_path:=$(arg hand_ik_solver_path)
+      config:=true
+      debug:=$(arg debug)
+      robot_config_file:=$(arg robot_config_file)" />
+      <param name="timeout" value="20.0" />
+    </node>
+  </group>
+
+  <!-- If database loading was enabled, start mongodb as well -->
+  <include file="$(find sr_multi_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)">
+    <arg name="moveit_warehouse_database_path" value="$(arg db_path)"/>
+  </include>
+
+</launch>

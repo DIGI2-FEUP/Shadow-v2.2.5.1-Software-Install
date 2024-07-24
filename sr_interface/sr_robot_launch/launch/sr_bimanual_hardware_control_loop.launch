@@ -1,0 +1,293 @@
+<!--
+ Software License Agreement (BSD License)
+ Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+ All rights reserved.
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+ This software is provided by Shadow Robot Company Ltd "as is" and any express
+ or implied warranties, including, but not limited to, the implied warranties of
+ merchantability and fitness for a particular purpose are disclaimed. In no event
+ shall the copyright holder be liable for any direct, indirect, incidental, special,
+ exemplary, or consequential damages (including, but not limited to, procurement of
+ substitute goods or services; loss of use, data, or profits; or business interruption)
+ however caused and on any theory of liability, whether in contract, strict liability,
+ or tort (including negligence or otherwise) arising in any way out of the use of this
+ software, even if advised of the possibility of such damage.
+-->
+
+<launch>
+  <arg name="debug" default="false"/>
+  <arg name="robot_state_pub_frequency" default="250"/>
+  <arg name="joint_state_pub_frequency" default="125"/>
+  <!-- Specify if the system has "both" hands, only "right", only "left", or "none"-->
+  <arg name="hands" default="both"/>
+  <arg name="arms" default="true"/>
+  <arg name="arm_ctrl" default="$(arg arms)"/>
+
+  <!-- HANDS CONFIG-->
+  <arg name="rh_serial" default="0"/>
+  <arg name="lh_serial" default="1"/>
+  <arg name="rh_mapping_path" default="$(find sr_edc_launch)/mappings/default_mappings/rh_E_v4.yaml"/>
+  <arg name="lh_mapping_path" default="$(find sr_edc_launch)/mappings/default_mappings/lh_E_v4.yaml"/>
+  <!-- Allows to specify the ethernet interface/s to be used. It defaults to the value of the env var ETHERCAT_PORT
+       More than one interface can be specified by concatenating them using underscore as a separator (e.g eth1_eth2_eth3) -->
+  <arg name="eth_port" default="$(optenv ETHERCAT_PORT eth0)"/>
+  <!-- The control mode PWM (true) or torque (false) -->
+  <arg name="pwm_control" default="true"/>
+  <!-- Set to true if you want to use hybrid controller -->
+  <arg name="hybrid_controller" default="false"/>
+  <arg name="hand_trajectory" unless="$(eval hands == 'none')" default="true"/>
+  <arg name="hand_trajectory" if="$(eval hands == 'none')" default="false"/>
+  <!-- Wheather the hands have biotacs -->
+  <arg name="biotac" default="false"/>
+  <!-- Separation between the robots -->
+  <arg name="hand_x_separation" default="-0.4"/>
+  <!-- This lets us use one hand_type to change both hands -->
+  <arg name="hand_type" default="hand_e"/>
+
+  <arg name="right_hand_type" default="$(arg hand_type)"/>
+  <arg if="$(eval arg('right_hand_type') == 'hand_e')" name="right_hand_version" default="E3M5"/>
+  <arg if="$(eval arg('right_hand_type') == 'hand_g')" name="right_hand_version" default="G1M5"/>
+  <arg if="$(eval arg('right_hand_type') == 'hand_c')" name="right_hand_version" default="C6M2"/>
+  <arg name="right_fingers" default="all"/>
+  <arg name="right_tip_sensors" default="pst"/>
+  <arg name="right_mid_sensors" default="none"/>
+  <arg name="right_prox_sensors" default="none"/>
+  <arg name="right_palm_sensor" default="none"/>
+
+  <arg name="left_hand_type" default="$(arg hand_type)"/>
+  <arg if="$(eval arg('left_hand_type') == 'hand_e')" name="left_hand_version" default="E3M5"/>
+  <arg if="$(eval arg('left_hand_type') == 'hand_g')" name="left_hand_version" default="G1M5"/>
+  <arg if="$(eval arg('left_hand_type') == 'hand_c')" name="left_hand_version" default="C6M2"/>
+  <arg name="left_fingers" default="all"/>
+  <arg name="left_tip_sensors" default="pst"/>
+  <arg name="left_mid_sensors" default="none"/>
+  <arg name="left_prox_sensors" default="none"/>
+  <arg name="left_palm_sensor" default="none"/>
+
+  <!-- ARMS CONFIG-->
+  <arg name="robot_model" default="ur10e"/>
+  <arg name="arm_1_z" default="0.7551"/>
+  <arg name="arm_2_z" default="0.7551"/>
+  <arg name="arm_x_separation" default="-0.4" if="$(eval not arg('hands') == 'none' and not arg('arm_ctrl'))"/>
+  <arg name="arm_x_separation" default="0.0" unless="$(eval not arg('hands') == 'none' and not arg('arm_ctrl'))"/>
+  <arg name="arm_y_separation" default="1.5"/>
+  <arg name="arm_robot_hw_1" if="$(eval not arg('robot_model') == 'ur10e')" default="$(find sr_robot_launch)/config/right_ur_arm_robot_hw.yaml"/>
+  <arg name="arm_robot_hw_1" if="$(eval arg('robot_model') == 'ur10e')" default="$(find sr_robot_launch)/config/right_ur10e_arm_robot_hw.yaml"/>
+  <arg name="arm_robot_hw_2" if="$(eval not arg('robot_model') == 'ur10e')" default="$(find sr_robot_launch)/config/left_bimanual_ur_arm_robot_hw.yaml"/>
+  <arg name="arm_robot_hw_2" if="$(eval arg('robot_model') == 'ur10e')" default="$(find sr_robot_launch)/config/left_bimanual_ur10e_arm_robot_hw.yaml"/>
+  <arg name="urcap_program_name" default="external_ctrl.urp"/>
+
+  <arg name="arm_trajectory" default="true"/>
+  <!-- Set to true to spawn the position controllers for the arm-->
+  <arg name="arm_position" default="$(eval not arm_trajectory)"/>
+  <arg name="right_arm_speed_scale" default="0.5"/>
+  <arg name="left_arm_speed_scale" default="0.5"/>
+
+  <!-- Sets up right payload and cog -->
+  <arg if="$(eval (hands == 'both' or hands == 'right') and arg('right_hand_type') == 'hand_e')" name="right_arm_payload_mass" default="5.0"/>
+  <arg if="$(eval (hands == 'both' or hands == 'right') and arg('right_hand_type') == 'hand_g')" name="right_arm_payload_mass" default="2.7"/>
+  <arg if="$(eval (hands == 'both' or hands == 'left') and arg('left_hand_type') == 'hand_e')" name="left_arm_payload_mass" default="5.0"/>
+  <arg if="$(eval (hands == 'both' or hands == 'left') and arg('left_hand_type') == 'hand_g')" name="left_arm_payload_mass" default="2.7"/>
+  <arg if="$(eval hands == 'none' or hands == 'left')" name="right_arm_payload_mass" default="0.0"/>
+  <arg if="$(eval hands == 'none' or hands == 'right')" name="left_arm_payload_mass" default="0.0"/>
+  <arg if="$(eval hands == 'both' or hands == 'right')" name="right_arm_payload_cog" default="[0.0, 0.0, 0.12]"/>
+  <arg if="$(eval hands == 'none' or hands == 'left')" name="right_arm_payload_cog" default="[0.0, 0.0, 0.0]"/>
+  <arg if="$(eval hands == 'both' or hands == 'left')" name="left_arm_payload_cog" default="[0.0, 0.0, 0.12]"/>
+  <arg if="$(eval hands == 'none' or hands == 'right')" name="left_arm_payload_cog" default="[0.0, 0.0, 0.0]"/>
+
+  <node pkg="rosservice" type="rosservice" name="set_right_speed_scale" args="call --wait /ra_sr_ur_robot_hw/set_speed_slider 'speed_slider_fraction: $(arg right_arm_speed_scale)'"/>
+  <node pkg="rosservice" type="rosservice" name="set_left_speed_scale" args="call --wait /la_sr_ur_robot_hw/set_speed_slider 'speed_slider_fraction: $(arg left_arm_speed_scale)'"/>
+
+  <node pkg="rosservice" type="rosservice" name="set_right_arm_payload" args="call --wait /ra_sr_ur_robot_hw/set_payload '{mass: $(arg right_arm_payload_mass), center_of_gravity: $(arg right_arm_payload_cog)}'"/>
+  <node pkg="rosservice" type="rosservice" name="set_left_arm_payload" args="call --wait /la_sr_ur_robot_hw/set_payload '{mass: $(arg left_arm_payload_mass), center_of_gravity: $(arg left_arm_payload_cog)}'"/>
+
+  <!-- ROBOT CONFIG-->
+  <!-- HANDS AND ARMS -->
+  <arg name="robot_config_file" if="$(eval arg('hands') == 'both' and arg('arm_ctrl'))" default="$(find sr_multi_moveit_config)/config/robot_configs/bimanual_sh_$(arg robot_model).yaml"/>
+  <!-- ARMS BUT NO HANDS -->
+  <arg name="robot_config_file" if="$(eval arg('hands') == 'none' and arg('arm_ctrl'))" default="$(find sr_multi_moveit_config)/config/robot_configs/bimanual_$(arg robot_model).yaml"/>
+  <!-- HANDS BUT NO ARMS -->
+  <arg name="robot_config_file" if="$(eval not arg('hands') == 'none' and not arg('arm_ctrl'))" default="$(find sr_multi_moveit_config)/config/robot_configs/bimanual_sh.yaml"/>
+  <!-- ARMS AND RIGHT HAND ONLY -->
+  <arg name="robot_config_file" if="$(eval arg('hands') == 'right' and arg('arm_ctrl'))" default="$(find sr_multi_moveit_config)/config/robot_configs/bimanual_sh_right_$(arg robot_model).yaml"/>
+  <!-- ARMS AND LEFT HAND ONLY -->
+  <arg name="robot_config_file" if="$(eval arg('hands') == 'left' and arg('arm_ctrl'))" default="$(find sr_multi_moveit_config)/config/robot_configs/bimanual_sh_left_$(arg robot_model).yaml"/>
+
+  <!-- Set robot config file path in a param in case moveit nodes need it -->
+  <param name="robot_config_file" value="$(arg robot_config_file)" type="str"/>
+  <!-- Launch rosparam for payload. If we only use hand and no arm the extra values wont be used-->
+  <rosparam file="$(arg robot_config_file)"/>
+
+  <!-- Logging local topics -->
+  <group ns="control_box">
+    <include file="$(find sr_logging_common)/launch/sr_rosbag_log.launch">
+      <arg name="log_topics" value='-e ".*(controller|debug_etherCAT_data).*" /joint_states /diagnostics /mechanism_statistics'/>
+      <arg name="log_bag_prefix" value="sr_hardware_control"/>
+      <arg name="log_directory" value="$(optenv HOME)/.ros/log"/>
+    </include>
+  </group>
+
+  <include file="$(find sr_robot_launch)/launch/bimanual_controller_stopper.launch"/>
+
+  <!-- Loading robot description-->
+    <include file="$(find sr_robot_launch)/launch/load_robot_description_bimanual.launch">
+    <arg name="sim" value="false"/>
+    <arg name="arms" value="$(arg arms)"/>
+    <arg name="hands" value="$(arg hands)"/>
+    <arg name="robot_model" value="$(arg robot_model)"/>
+    <arg name="hand_x_separation" value="$(arg hand_x_separation)"/>
+    <arg name="arm_x_separation" value="$(arg arm_x_separation)"/>
+    <arg name="arm_y_separation" value="$(arg arm_y_separation)"/>
+    <arg name="arm_1_z" value="$(arg arm_1_z)"/>
+    <arg name="arm_2_z" value="$(arg arm_2_z)"/>
+
+    <arg name="right_hand_type" value="$(arg right_hand_type)"/>
+    <arg name="right_hand_version" value="$(arg right_hand_version)"/>
+    <arg name="right_fingers" value="$(arg right_fingers)"/>
+    <arg name="right_tip_sensors" value="$(arg right_tip_sensors)"/>
+    <arg name="right_mid_sensors" value="$(arg right_mid_sensors)"/>
+    <arg name="right_prox_sensors" value="$(arg right_prox_sensors)"/>
+    <arg name="right_palm_sensor" value="$(arg right_palm_sensor)"/>
+
+    <arg name="left_hand_type" value="$(arg left_hand_type)"/>
+    <arg name="left_hand_version" value="$(arg left_hand_version)"/>
+    <arg name="left_fingers" value="$(arg left_fingers)"/>
+    <arg name="left_tip_sensors" value="$(arg left_tip_sensors)"/>
+    <arg name="left_mid_sensors" value="$(arg left_mid_sensors)"/>
+    <arg name="left_prox_sensors" value="$(arg left_prox_sensors)"/>
+    <arg name="left_palm_sensor" value="$(arg left_palm_sensor)"/>
+
+  </include>
+
+  <!-- Default hand controller groups -->
+  <arg if="$(arg hybrid_controller)" name="hand_controller_group" default="hybrid"/>
+  <arg if="$(eval hand_trajectory and not hybrid_controller)" name="hand_controller_group" default="trajectory"/>
+  <arg if="$(eval not hand_trajectory and not hybrid_controller)" name="hand_controller_group" default="position"/>
+
+  <!-- Controller -->
+  <group unless="$(eval hands == 'none')">
+    <!-- HAND (N.B. Arm robot harware is implicitly started here if ra_sr_ur_robot_hw is present in param /robot_hardware-->
+    <include file="$(find sr_edc_launch)/sr_edc_bimanual_ros_control.launch">
+      <arg name="define_robot_hardware" value="false"/>
+      <arg name="load_robot_description" value="false"/>
+      <arg name="debug" value="$(arg debug)"/>
+      <arg name="rh_serial" value="$(arg rh_serial)"/>
+      <arg name="lh_serial" value="$(arg lh_serial)"/>
+      <arg name="rh_mapping_path" value="$(arg rh_mapping_path)"/>
+      <arg name="lh_mapping_path" value="$(arg lh_mapping_path)"/>
+      <arg name="eth_port" value="$(arg eth_port)"/>
+      <arg name="pwm_control" value="$(arg pwm_control)"/>
+      <arg name="arm_1_z" value="$(arg arm_1_z)"/>
+      <arg name="arm_2_z" value="$(arg arm_2_z)"/>
+      <arg name="arm_x_separation" value="$(arg arm_x_separation)"/>
+      <arg name="arm_y_separation" value="$(arg arm_y_separation)"/>
+      <arg name="robot_state_pub_frequency" value="$(arg robot_state_pub_frequency)"/>
+      <arg name="joint_state_pub_frequency" value="$(arg joint_state_pub_frequency)"/>
+    </include>
+    <node name="bimanual_trajectory_controller" pkg="sr_utilities" type="controller_spawner.py" output="screen">
+      <param name="controller_group" value="$(arg hand_controller_group)"/>
+      <param name="wait_for" value="calibrated"/>
+    </node>
+  </group>
+
+  <!-- Set rosparam if both hands and arms are being used -->
+  <group if="$(eval not arg('hands') == 'none' and arg('arm_ctrl'))">
+    <rosparam>
+      robot_hardware:
+        - unique_robot_hw
+        - ra_sr_ur_robot_hw
+        - la_sr_ur_robot_hw
+    </rosparam>
+  </group>
+
+  <!-- Set rosparam, load xacros and launch state publisher nodes if only arms are being used (no hands) -->
+  <group if="$(eval arg('hands') == 'none' and arg('arm_ctrl'))">
+    <rosparam>
+      robot_hardware:
+        - ra_sr_ur_robot_hw
+        - la_sr_ur_robot_hw
+    </rosparam>
+    <include file="$(find ros_ethercat_model)/launch/joint_state_publisher.launch">
+      <arg name="publish_rate" value="$(arg joint_state_pub_frequency)"/>
+    </include>
+    <node if="$(arg debug)" name="ur_arm_robot" pkg="ros_control_robot" type="ros_control_robot" args="" output="screen" launch-prefix="gdb -ex run -args"/>
+    <node unless="$(arg debug)" name="ur_arm_robot" pkg="ros_control_robot" type="ros_control_robot" args="" output="screen" launch-prefix="ethercat_grant"/>
+    <node name="conditional_delayed_rostool_robot_state_publisher" pkg="sr_utilities_common" type="conditional_delayed_rostool.py" output="screen">
+      <param name="package_name" value="robot_state_publisher" />
+      <param name="executable_name" value="robot_state_publisher" />
+      <rosparam param="params_list">[/robot_description]</rosparam>
+      <param name="launch_args_list" value="
+      publish_frequency=$(arg robot_state_pub_frequency)" />
+    </node>
+  </group>
+
+  <!-- Set rosparams and load robot hardware if arms are being used -->
+  <group if="$(eval arg('arm_ctrl'))">
+    <rosparam command="load" file="$(arg arm_robot_hw_1)"/>
+    <rosparam command="load" file="$(arg arm_robot_hw_2)"/>
+
+    <!-- Set the parameters related to ur files -->
+    <param name="ra_sr_ur_robot_hw/input_recipe_file" type="string" value="$(find ur_robot_driver)/resources/rtde_input_recipe.txt"/>
+    <param name="la_sr_ur_robot_hw/input_recipe_file" type="string" value="$(find ur_robot_driver)/resources/rtde_input_recipe.txt"/>
+    <param name="ra_sr_ur_robot_hw/output_recipe_file" type="string" value="$(find ur_robot_driver)/resources/rtde_output_recipe.txt"/>
+    <param name="la_sr_ur_robot_hw/output_recipe_file" type="string" value="$(find ur_robot_driver)/resources/rtde_output_recipe.txt"/>
+    <param name="ra_sr_ur_robot_hw/script_file" type="string" value="$(find ur_client_library)/resources/external_control.urscript"/>
+    <param name="la_sr_ur_robot_hw/script_file" type="string" value="$(find ur_client_library)/resources/external_control.urscript"/>
+
+    <param name="ra_sr_ur_robot_hw/speed_scale" type="double" value="$(arg right_arm_speed_scale)"/>
+    <param name="la_sr_ur_robot_hw/speed_scale" type="double" value="$(arg left_arm_speed_scale)"/>
+    <node name="sr_ur_arm_unlock" pkg="sr_robot_launch" type="sr_ur_arm_unlock" output="screen">
+      <param name="urcap_program_name" value="$(arg urcap_program_name)"/>
+    </node>
+    <group if="$(eval 'e' in arg('robot_model'))">
+      <rosparam command="load" file="$(find sr_robot_launch)/config/ra_force_torque_controller.yaml"/>
+      <rosparam command="load" file="$(find sr_robot_launch)/config/la_force_torque_controller.yaml"/>
+      <node name="ft_sensor_controllers_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="ra_force_torque_sensor_controller la_force_torque_sensor_controller" />
+    </group>
+  </group>
+
+  <!-- Set rosparam if only bimanual hands and no arms are being used -->
+  <group if="$(eval not arg('hands') == 'none' and not arg('arm_ctrl'))">
+    <rosparam>
+      robot_hardware:
+        - unique_robot_hw
+    </rosparam>
+  </group>
+
+  <!-- Trajectory mode if arms are being used -->
+  <group if="$(eval arg('arm_trajectory') and arg('arm_ctrl'))">
+    <rosparam command="load" file="$(find sr_robot_launch)/config/ra_trajectory_controller.yaml"/>
+    <rosparam command="load" file="$(find sr_robot_launch)/config/la_trajectory_controller.yaml"/>
+    <node name="ra_arm_trajectory_controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+          args="--wait-for=/ra_sr_ur_robot_hw/robot_program_running ra_trajectory_controller"/>
+    <node name="la_arm_trajectory_controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+          args="--wait-for=/la_sr_ur_robot_hw/robot_program_running la_trajectory_controller"/>
+  </group>
+
+  <!-- Position mode if arms are being used -->
+  <group if="$(eval arg('arm_position') and arg('arm_ctrl'))">
+    <rosparam file="$(find sr_robot_launch)/config/ra_group_position_controller.yaml" command="load"/>
+    <rosparam file="$(find sr_robot_launch)/config/la_group_position_controller.yaml" command="load"/>
+    <node name="arm_group_position_controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+          args="ra_trajectory_controller la_trajectory_controller"/>
+  </group>
+
+  <arg name="record_hand_data" value="$(optenv SR_RECORD_HAND_DATA disabled)"/>
+  <arg name="log_directory" value="$(optenv HOME)/shadow_bag_storage/sr_record_all_hand_data"/>
+  <arg name="log_split_size" default="64"/>
+  <arg name="log_topics" value='-e ".*(diagnostics|jog_arm|joint|rh|lh|sh_|tf).*" /mechanism_statistics /ros_ethercat/motors_halted /sr_watchdog'/>
+
+  <group if="$(eval arg('record_hand_data') == 'enabled')">
+    <node pkg="rosbag" type="record" args='-o $(arg log_directory) --lz4 --split --size $(arg log_split_size) $(arg log_topics) ' name="record_hand_bags"/>
+  </group>
+
+</launch>

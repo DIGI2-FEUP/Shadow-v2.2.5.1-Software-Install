@@ -1,0 +1,52 @@
+<!--
+ Software License Agreement (BSD License)
+ Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+ All rights reserved.
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+ This software is provided by Shadow Robot Company Ltd "as is" and any express
+ or implied warranties, including, but not limited to, the implied warranties of
+ merchantability and fitness for a particular purpose are disclaimed. In no event
+ shall the copyright holder be liable for any direct, indirect, incidental, special,
+ exemplary, or consequential damages (including, but not limited to, procurement of
+ substitute goods or services; loss of use, data, or profits; or business interruption)
+ however caused and on any theory of liability, whether in contract, strict liability,
+ or tort (including negligence or otherwise) arising in any way out of the use of this
+ software, even if advised of the possibility of such damage.
+-->
+
+<package>
+
+  <name>sr_multi_moveit_test</name>
+  <version>0.0.1</version>
+  <description>
+    A package to test the MoveIt Motion Planning Framework on the left_sr_ur10 and right_sr_ur10 arms
+  </description>
+  <author email="beatriz@shadowrobot.com">Beatriz Leon</author>
+  <maintainer email="beatriz@shadowrobot.com">Beatriz Leon</maintainer>
+
+  <license>BSD</license>
+
+  <run_depend>moveit_ros_move_group</run_depend>
+  <run_depend>moveit_planners_ompl</run_depend>
+  <run_depend>moveit_ros_visualization</run_depend>
+  <run_depend>joint_state_publisher</run_depend>
+  <run_depend>robot_state_publisher</run_depend>
+  <run_depend>moveit_simple_controller_manager</run_depend>
+  <run_depend>xacro</run_depend>
+  <build_depend>sr_multi_description</build_depend>
+  <run_depend>sr_multi_description</run_depend>
+  <build_depend>rostest</build_depend>
+  <run_depend>sr_utilities_common</run_depend>
+  <build_depend>moveit_ros_planning_interface</build_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
+</package>

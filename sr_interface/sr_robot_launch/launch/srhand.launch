@@ -1,0 +1,139 @@
+<!--
+ Software License Agreement (BSD License)
+ Copyright © 2022-2023 belongs to Shadow Robot Company Ltd.
+ All rights reserved.
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+ This software is provided by Shadow Robot Company Ltd "as is" and any express
+ or implied warranties, including, but not limited to, the implied warranties of
+ merchantability and fitness for a particular purpose are disclaimed. In no event
+ shall the copyright holder be liable for any direct, indirect, incidental, special,
+ exemplary, or consequential damages (including, but not limited to, procurement of
+ substitute goods or services; loss of use, data, or profits; or business interruption)
+ however caused and on any theory of liability, whether in contract, strict liability,
+ or tort (including negligence or otherwise) arising in any way out of the use of this
+ software, even if advised of the possibility of such damage.
+-->
+
+<launch>
+  <!-- set to false if you want to use real robots, true if you need the gazebo simulation -->
+  <arg name="sim" default="false"/>
+  <!-- Set to true for debugging -->
+  <arg name="debug" default="false"/>
+  <!-- Set to true to spawn trajectory controllers for the hands(the trajectory controller overwrites continuously the joint position command, preventing direct control via topics-->
+  <arg name="hand_trajectory" default="true"/>
+  <!-- Set to true to spawn the position controllers for the hands-->
+  <arg name="hand_ctrl" default="true"/>
+  <!-- Argument to autodetect specific hand in bimanual setup -->
+  <arg name="hand_side_ad" default=""/>
+  <!-- The control mode PWM (true) or torque (false) -->
+  <!-- Set to true by default for now as torque control is not available yet -->
+  <arg name="pwm_control" default="true"/>
+  <!-- Set to true to allow planning trajectories-->
+  <arg name="use_moveit" default="true"/>
+  <!-- Set to false if you want to start without guis -->
+  <arg name="gui" default="true"/>
+  <!-- Set to true if you want to use grasp controller -->
+  <arg name="grasp_controller" default="false"/>
+  <!-- Set to true if you want to use hybrid controller -->
+  <arg name="hybrid_controller" default="false"/>
+  <!-- The robot state publisher publishing frequency  -->
+  <arg name="robot_state_pub_frequency" default="250"/>
+  <!-- The joint state publisher publishing frequency  -->
+  <arg name="joint_state_pub_frequency" default="125"/>
+  <!-- Set this to true if you run the hardware loop on a remote computer -->
+  <arg name="external_control_loop" default="false"/>
+  <!-- ik solver possible values sr_hand_kinematics/trac_ik/bio_ik -->
+  <arg name="hand_ik_solver" default="sr_hand_kinematics"/>
+  <!-- Trajectory controllers partial name list for moveit-->
+  <arg if="$(eval not hand_trajectory)" name="trajectory_controllers_list_patterns" default="[]"/>
+  <arg if="$(eval hand_trajectory)" name="trajectory_controllers_list_patterns" default="[(rh|lh)_trajectory_controller/state]"/>
+
+  <!-- SIMULATED ROBOTS -->
+  <arg name="verbose" default="true" />
+  <!-- This launch file is for shadow hand only -->
+  <arg name="hand_id" default="rh"/>
+  <!-- hand_id is deprecated but still necessary for this file due to the structure of sr_config repository-->
+  <arg if="$(eval arg('hand_id') == 'rh')" name="side" default="right"/>
+  <arg if="$(eval arg('hand_id') == 'lh')" name="side" default="left"/>
+  <!-- Set to hand_e or hand_g -->
+  <arg name="hand_type" default="hand_e"/>
+  <arg if="$(eval arg('hand_type') == 'hand_e')" name="hand_version" default="E3M5"/>
+  <arg if="$(eval arg('hand_type') == 'hand_g')" name="hand_version" default="G1M5"/>
+  <arg if="$(eval arg('hand_type') == 'hand_c')" name="hand_version" default="C6M2"/>
+    <!-- Set to all allowed fingers by default but you can specify less using a list like this "th,ff,mf,rf,lf" -->
+  <arg name="fingers" default="all"/>
+  <!-- Set to pst sensors by default but they can be specified by finger using a list like this "th=pst,ff=pst,mf=pst,rf=pst,lf=pst" -->
+  <arg name="tip_sensors" default="pst"/>
+  <arg name="mid_sensors" default="none"/>
+  <arg name="prox_sensors" default="none"/>
+  <arg name="palm_sensor" default="none"/>
+
+  <group if="$(arg sim)">
+    <include file="$(find sr_robot_launch)/launch/sr_simulation_control_loop.launch">
+      <arg name="debug" value="$(arg debug)"/>
+      <arg name="robot_state_pub_frequency" value="$(arg robot_state_pub_frequency)"/>
+      <arg name="joint_state_pub_frequency" value="$(arg joint_state_pub_frequency)"/>
+      <arg name="gui" value="$(arg gui)"/>
+      <arg name="verbose" value="$(arg verbose)" />
+      <arg name="side" value="$(arg side)"/>
+      <arg name="arm" value="false"/>
+      <arg name="hand" value="true"/>
+      <arg name="hand_ctrl" value="$(arg hand_ctrl)"/>
+      <arg name="hand_type"  value="$(arg hand_type)"/>
+      <arg name="hand_version" value="$(arg hand_version)"/>
+      <arg name="fingers" value="$(arg fingers)"/>
+      <arg name="tip_sensors" value="$(arg tip_sensors)"/>
+      <arg name="mid_sensors" value="$(arg mid_sensors)"/>
+      <arg name="prox_sensors" value="$(arg prox_sensors)"/>
+      <arg name="palm_sensor" value="$(arg palm_sensor)"/>
+      <arg name="hand_trajectory" value="$(arg hand_trajectory)"/>
+      <arg name="grasp_controller" value="$(arg grasp_controller)"/>
+      <arg name="hybrid_controller" value="$(arg hybrid_controller)"/>
+    </include>
+  </group>
+
+  <!-- REAL ROBOTS -->
+  <group if="$(eval not sim and not external_control_loop)">
+      <node pkg="sr_hand_detector" type="sr_hand_autodetect" name="hardware_control_loop_autodetection" output="screen"
+        args="$(arg hand_side_ad) roslaunch sr_robot_launch sr_hardware_control_loop.launch
+          debug:=$(arg debug)
+          pwm_control:=$(arg pwm_control)
+          robot_state_pub_frequency:=$(arg robot_state_pub_frequency)
+          joint_state_pub_frequency:=$(arg joint_state_pub_frequency)
+          grasp_controller:=$(arg grasp_controller)
+          hybrid_controller:=$(arg hybrid_controller)
+          hand_ctrl:=$(arg hand_ctrl)
+          hand_trajectory:=$(arg hand_trajectory)
+          arm:=false" />
+  </group>
+
+  <!-- MOVEIT -->
+  <group if="$(arg use_moveit)">
+    <include file="$(find sr_moveit_hand_config)/launch/moveit_planning_and_execution.launch">
+      <arg name="hand_ik_solver" value="$(arg hand_ik_solver)"/>
+      <arg name="gui" value="$(arg gui)"/>
+      <arg name="trajectory_controllers_list" value="$(arg trajectory_controllers_list_patterns)"/>
+    </include>
+    <include file="$(find sr_moveit_hand_config)/launch/default_warehouse_db.launch"/>
+  </group>
+
+  <!-- Logging. -->
+  <include file="$(find sr_logging_common)/launch/sr_rosbag_log.launch">
+    <arg name="node_name" value="server_record"/>
+    <arg name="log_bag_prefix" value="sr_hand"/>
+    <arg name="log_directory" value="$(optenv HOME)/.ros/log"/>
+    <arg name="log_topics" value='-e ".*(controller|debug_etherCAT_data).*" /joint_states /rosout /diagnostics /mechanism_statistics /journalctl_log'/>
+  </include>  
+
+  <!-- Publish underactuation error -->
+  <node name="error_reporter" pkg="sr_error_reporter" type="error_reporter" output="screen"/>
+</launch>

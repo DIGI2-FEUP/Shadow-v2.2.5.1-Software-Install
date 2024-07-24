@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+
+# Software License Agreement (BSD License)
+# Copyright © 2019-2023 belongs to Shadow Robot Company Ltd.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#   1. Redistributions of source code must retain the above copyright notice,
+#      this list of conditions and the following disclaimer.
+#   2. Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#   3. Neither the name of Shadow Robot Company Ltd nor the names of its contributors
+#      may be used to endorse or promote products derived from this software without
+#      specific prior written permission.
+#
+# This software is provided by Shadow Robot Company Ltd "as is" and any express
+# or implied warranties, including, but not limited to, the implied warranties of
+# merchantability and fitness for a particular purpose are disclaimed. In no event
+# shall the copyright holder be liable for any direct, indirect, incidental, special,
+# exemplary, or consequential damages (including, but not limited to, procurement of
+# substitute goods or services; loss of use, data, or profits; or business interruption)
+# however caused and on any theory of liability, whether in contract, strict liability,
+# or tort (including negligence or otherwise) arising in any way out of the use of this
+# software, even if advised of the possibility of such damage.
+
+from typing import Dict, Union
+import rospy
+from sensor_msgs.msg import JointState
+from sr_controllers_tools.sr_controller_helper import ControllerHelper
+from sr_robot_msgs.msg import ControlType
+from sr_robot_msgs.srv import (ChangeControlType, RobotTeachMode,
+                               RobotTeachModeRequest, RobotTeachModeResponse)
+
+
+class TeachModeManager:
+    """
+    A class to manage change in control of the robot using the ControllerHelper class.
+    It advertises a service to change the control type of the robot.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialise the class. It will create a dictionary of hand joints used for the ControllerHelper
+        class and advertise the service.
+        """
+        hand_joint_names = self._create_hand_joints()
+
+        rospy.Service('teach_mode', RobotTeachMode, self.teach_mode)
+
+        # ARM REMOVED BECAUSE CANNOT CHANGE CONTROL
+        self.ctrl_helpers = {
+            "right_hand": ControllerHelper(["rh"], ["rh_"], hand_joint_names["rh_"]),
+            "left_hand": ControllerHelper(["lh"], ["lh_"], hand_joint_names["lh_"])
+        }
+
+        self.modes = ["TRAJECTORY_MODE", "TEACH_MODE", "POSITION_MODE", "DIRECT_PWM_MODE"]
+
+    @staticmethod
+    def _create_hand_joints(waiting_timeout: Union[int, float] = 60) -> Dict[str, list]:
+        """
+        Create a dictionary of hand joints based on the joint states.
+        This method will wait for the joint states to be published for a specified timeout in
+        increments of 10 seconds.
+        @param waiting_timeout: The timeout in seconds, default of 60 seconds.
+        @return: A dictionary of hand joints.
+        """
+        hand_joint_names = {
+            "rh_": [],
+            "lh_": []
+        }
+        time_waited = rospy.Time.now().to_sec()
+        increment = 0
+        # Wait for the joint states to be published for a specified timeout in increments of 10 seconds.
+        while not rospy.is_shutdown() and \
+                rospy.Time.now().to_sec() - time_waited < waiting_timeout:  # pylint: disable=R1702
+            try:
+                increment += 1
+                joint_states_msg = rospy.wait_for_message("joint_states", JointState, timeout=10)
+            except rospy.ROSException:
+                rospy.logwarn(f"Waiting for joint states to be published for {increment*10} seconds...")
+            else:
+                for prefix, joint_list in hand_joint_names.items():
+                    for joint in joint_states_msg.name:
+                        if prefix not in joint:
+                            continue
+                        if "_THJ" not in joint and "_WRJ" not in joint:
+                            if "J1" in joint:
+                                joint_list.append(joint[len(prefix):-1].lower() + "0")
+                            elif "J2" not in joint:
+                                joint_list.append(joint[len(prefix):].lower())
+                        else:
+                            joint_list.append(joint[len(prefix):].lower())
+                return hand_joint_names
+
+        if not any(hand_joint_names.values()):
+            raise ValueError("No joint states have been found for a hand. Please check the connections.")
+
+    def teach_mode(self, req: RobotTeachModeRequest) -> RobotTeachModeResponse:  # pylint: disable=R0911
+        """
+        This method is called when the service is called, it will change the control type of the robot.
+        Currently only the hand is supported.
+        @param req: The request containing the robot and control type.
+        @return: The response containing the result of the change.
+        """
+        rospy.loginfo(f"Changing {req.robot} to {self.modes[req.teach_mode]}")
+
+        if req.robot == "right_arm" or req.robot == "left_arm":
+            if req.teach_mode == RobotTeachModeRequest.TRAJECTORY_MODE \
+                    or req.teach_mode == RobotTeachModeRequest.POSITION_MODE:
+
+                rospy.loginfo(f"Changing {req.robot} to position (non-teach) mode")
+
+                if not self.ctrl_helpers[req.robot].change_arm_teach_mode(False):
+                    rospy.logerr(f"Could not set {req.robot} teach mode")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.ERROR)
+
+                if req.teach_mode == RobotTeachModeRequest.POSITION_MODE:
+                    rospy.loginfo("Changing {req.robot} trajectory controllers to STOP")
+                    self.ctrl_helpers[req.robot].change_trajectory_ctrl("stop")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+                rospy.loginfo(f"Changing {req.robot} trajectory controllers to RUN")
+                self.ctrl_helpers[req.robot].change_trajectory_ctrl("run")
+                return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+            if req.teach_mode == RobotTeachModeRequest.TEACH_MODE:
+                rospy.loginfo(f"Changing {req.robot} to teach mode")
+
+                if not self.ctrl_helpers[req.robot].change_arm_teach_mode(True):
+                    rospy.logerr(f"Could not set {req.robot} teach mode")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.ERROR)
+
+                rospy.loginfo(f"Changing {req.robot} trajectory controllers to STOP")
+                self.ctrl_helpers[req.robot].change_trajectory_ctrl("stop")
+                return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+            rospy.logerr(f"Unknown teach mode: {req.teach_mode}")
+            return RobotTeachModeResponse(RobotTeachModeResponse.ERROR)
+
+        if req.robot == "right_hand" or req.robot == "left_hand":
+            change_type_msg = ChangeControlType()
+            if req.teach_mode == RobotTeachModeRequest.TRAJECTORY_MODE \
+                    or req.teach_mode == RobotTeachModeRequest.POSITION_MODE \
+                    or req.teach_mode == RobotTeachModeRequest.DIRECT_PWM_MODE:
+
+                rospy.loginfo(f"Changing all {req.robot} controllers to STOP")
+                self.ctrl_helpers[req.robot].change_hand_ctrl("stop")
+                self.ctrl_helpers[req.robot].change_trajectory_ctrl("stop")
+
+                change_type_msg.control_type = ControlType.PWM
+                rospy.loginfo(f"Changing {req.robot} Control mode to PWM")
+                self.ctrl_helpers[
+                    req.robot].change_force_ctrl_type(change_type_msg)
+
+                if req.teach_mode == RobotTeachModeRequest.DIRECT_PWM_MODE:
+                    self.ctrl_helpers[req.robot].change_force_ctrl_type(change_type_msg)
+                    rospy.loginfo(f"Changing {req.robot} controllers to effort")
+                    self.ctrl_helpers[req.robot].change_hand_ctrl("effort")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+                if req.teach_mode == RobotTeachModeRequest.POSITION_MODE:
+                    rospy.loginfo(f"Changing {req.robot} controllers to position")
+                    self.ctrl_helpers[req.robot].change_hand_ctrl("position")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+                if req.teach_mode == RobotTeachModeRequest.TRAJECTORY_MODE:
+                    rospy.loginfo(f"Changing {req.robot} controllers to position")
+                    self.ctrl_helpers[req.robot].change_hand_ctrl("position")
+                    rospy.loginfo(f"Changing {req.robot} trajectory controllers to RUN")
+                    self.ctrl_helpers[req.robot].change_trajectory_ctrl("run")
+                    return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+            if req.teach_mode == RobotTeachModeRequest.TEACH_MODE:
+                rospy.loginfo(f"Changing all {req.robot} controllers to STOP")
+                self.ctrl_helpers[req.robot].change_hand_ctrl("stop")
+                self.ctrl_helpers[req.robot].change_trajectory_ctrl("stop")
+
+                change_type_msg.control_type = ControlType.FORCE
+                rospy.loginfo(f"Changing {req.robot} Control mode to FORCE")
+                self.ctrl_helpers[req.robot].change_force_ctrl_type(change_type_msg)
+                rospy.loginfo(f"Changing {req.robot} controllers to effort")
+                self.ctrl_helpers[req.robot].change_hand_ctrl("effort")
+
+                return RobotTeachModeResponse(RobotTeachModeResponse.SUCCESS)
+
+            rospy.logerr(f"Unknown mode: {self.modes[req.teach_mode]}")
+            return RobotTeachModeResponse(RobotTeachModeResponse.ERROR)
+
+        rospy.logerr(f"Unknown robot: {req.robot}")
+        return RobotTeachModeResponse(RobotTeachModeResponse.ERROR)
+
+
+if __name__ == "__main__":
+    rospy.init_node("teach_mode_node")
+
+    manager = TeachModeManager()
+
+    rospy.spin()
