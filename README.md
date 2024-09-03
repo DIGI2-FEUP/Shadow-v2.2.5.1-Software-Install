@@ -1,6 +1,6 @@
 # Shadow Dexterous Hand Software Installation
 
-Last reviewed: `24/07/2024`
+Last reviewed: `03/09/2024`
 
 ## Introduction
 
