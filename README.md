@@ -1,6 +1,6 @@
 # Shadow Dexterous Hand Software Installation
 
-Last reviewed: `03/09/2024`
+Last reviewed: `September 2024`
 
 ## Introduction
 
@@ -25,13 +25,14 @@ Before running the command provided by Shadow that installs docker and the serve
 
 Please ask for access to this device if you intend to perform the installation process.
 
-After this you can run the following command:
+Before running the one-liner, check how is the usb to ethernet adapter being recognized by your system, for this run `ifconfig`.
 
-  Ubuntu 20.04 (original Shadow one-liner):
+  If the device interface name starts with `enx`, run the following command (original Shadow one-liner):
   ```bash
     bash <(curl -Ls https://raw.githubusercontent.com/shadow-robot/aurora/v2.2.5.1/bin/run-ansible.sh) server_and_nuc_deploy --branch v2.2.5.1 --read-secure customer_key product=hand_e tag=noetic-v1.0.31 reinstall=true
   ```
-  Ubuntu 22.04:
+
+  Else if the device interface name starts with `eth`, run the following command:
   ```bash
     bash <(curl -Ls https://raw.githubusercontent.com/DIGI2-FEUP/aurora-2.2.5.1/master/bin/run-ansible.sh) server_and_nuc_deploy --read-secure customer_key product=hand_e tag=noetic-v1.0.31 reinstall=true
   ```
