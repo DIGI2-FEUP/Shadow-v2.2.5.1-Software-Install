@@ -36,6 +36,8 @@ Before running the one-liner, check how is the usb to ethernet adapter being rec
   ```bash
     bash <(curl -Ls https://raw.githubusercontent.com/DIGI2-FEUP/aurora-2.2.5.1/master/bin/run-ansible.sh) server_and_nuc_deploy --read-secure customer_key product=hand_e tag=noetic-v1.0.31 reinstall=true
   ```
+📝 Note: If the installation process ends with an error, try running the command again. If the error persist, restart the pc and then try running the installation command again. After some tries, if the error still persists, please contact Shadow support at: `support@shadowrobot.com`.
+
 During the installation process you will be prompted to insert some credentials. These are printed in a laminated sheet that is kept in the case of the Shadow Hand.
 
 This should create a few icons on your desktop. You can use the “Shadow Launcher" to access utilities of the software package. 
