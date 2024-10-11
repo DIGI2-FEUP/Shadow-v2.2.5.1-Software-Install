@@ -48,11 +48,7 @@ Inside it you will find a folder called “Shadow Advanced Launchers" containing
 
 If you encounter an error during the installation process, it might be caused by outdated installation components. In such cases, it is recommended to check for newer versions of the files referenced in the error message.
 
-To do this, navigate to the original [repository](https://github.com/shadow-robot/aurora) on GitHub:
-
-Locate the specific file mentioned in the error message and check for any recent updates or changes.
-
-It is possible that the issue has been addressed in a more recent version of the file.
+To do this, navigate to the original [repository](https://github.com/shadow-robot/aurora) on GitHub, locate the specific file mentioned in the error message and check for any recent updates or changes. It is possible that the issue has been addressed in a more recent version of the file.
 
 ## BioIK Kinematic Solver Instalation
 
