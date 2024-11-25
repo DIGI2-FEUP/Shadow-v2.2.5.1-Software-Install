@@ -318,6 +318,9 @@ def generate_kinematics(robot, template_path="kinematics_template.yaml",
             if group_name in yamldoc:
                 kinematics_config = yamldoc[group_name]
 
+        if group.name == "right_hand":
+            kinematics_config = yamldoc_fixed_joint[group.name]
+
         if kinematics_config is not None:
             if prefix:
                 if "tip_name" in kinematics_config:
